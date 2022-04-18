@@ -1,5 +1,8 @@
 //! Module containing types related to delegates.
-use crate::error::{AuthErrorOr, Error};
+use crate::{
+    error::{AuthErrorOr, Error},
+    ApplicationSecret,
+};
 
 use std::pin::Pin;
 use std::time::Duration;
@@ -96,7 +99,7 @@ async fn present_user_code(device_auth_resp: &DeviceAuthResponse) {
     println!("Do not close this application until you either denied or granted access.");
     let printable_time = match UtcOffset::current_local_offset() {
         Ok(offset) => device_auth_resp.expires_at.to_offset(offset),
-        Err(_) => device_auth_resp.expires_at,  // Fallback to printing in UTC
+        Err(_) => device_auth_resp.expires_at, // Fallback to printing in UTC
     };
     println!("You have time until {}.", printable_time);
 }
@@ -105,8 +108,13 @@ async fn present_user_code(device_auth_resp: &DeviceAuthResponse) {
 /// the application what to do in certain cases.
 pub trait InstalledFlowDelegate: Send + Sync {
     /// Configure a custom redirect uri if needed.
-    fn redirect_uri(&self) -> Option<&str> {
-        None
+    fn redirect_uri<'a>(&self, app_secret: &'a ApplicationSecret) -> Option<&'a str> {
+        if app_secret.redirect_uris.len() > 0 {
+            let redirect_uri = &app_secret.redirect_uris[0];
+            Some(redirect_uri)
+        } else {
+            None
+        }
     }
 
     /// We need the user to navigate to a URL using their browser and potentially paste back a code
