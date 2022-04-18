@@ -135,7 +135,7 @@ impl InstalledFlow {
             &app_secret.auth_uri,
             &app_secret.client_id,
             scopes,
-            self.flow_delegate.redirect_uri(),
+            self.flow_delegate.redirect_uri(app_secret),
         );
         log::debug!("Presenting auth url to user: {}", url);
         let auth_code = self
@@ -165,7 +165,7 @@ impl InstalledFlow {
         // Present url to user.
         // The redirect URI must be this very localhost URL, otherwise authorization is refused
         // by certain providers.
-        let redirect_uri: Cow<str> = match self.flow_delegate.redirect_uri() {
+        let redirect_uri: Cow<str> = match self.flow_delegate.redirect_uri(app_secret) {
             Some(uri) => uri.into(),
             None => format!("http://{}", server_addr).into(),
         };
@@ -195,7 +195,7 @@ impl InstalledFlow {
     where
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
-        let redirect_uri = self.flow_delegate.redirect_uri();
+        let redirect_uri = self.flow_delegate.redirect_uri(app_secret);
         let request = Self::request_token(app_secret, authcode, redirect_uri, server_addr);
         log::debug!("Sending request: {:?}", request);
         let (head, body) = hyper_client.request(request).await?.into_parts();
