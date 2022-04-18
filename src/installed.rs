@@ -52,6 +52,7 @@ where
         "&access_type=offline".to_string(),
         format!("&redirect_uri={}", redirect_uri.unwrap_or(OOB_REDIRECT_URI)),
         "&response_type=code".to_string(),
+        "&prompt=consent".to_string(),
         format!("&client_id={}", client_id),
     ]
     .into_iter()
@@ -380,7 +381,7 @@ mod tests {
         assert_eq!(
             "https://accounts.google.\
              com/o/oauth2/auth?scope=email%20profile&access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:\
-             oob&response_type=code&client_id=812741506391-h38jh0j4fv0ce1krdkiq0hfvt6n5amr\
+             oob&response_type=code&prompt=consent&client_id=812741506391-h38jh0j4fv0ce1krdkiq0hfvt6n5amr\
              f.apps.googleusercontent.com",
             build_authentication_request_url(
                 "https://accounts.google.com/o/oauth2/auth",
@@ -397,7 +398,7 @@ mod tests {
         assert_eq!(
             "https://accounts.google.\
              com/o/oauth2/auth?unknown=testing&scope=email%20profile&access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:\
-             oob&response_type=code&client_id=812741506391-h38jh0j4fv0ce1krdkiq0hfvt6n5amr\
+             oob&response_type=code&prompt=consent&client_id=812741506391-h38jh0j4fv0ce1krdkiq0hfvt6n5amr\
              f.apps.googleusercontent.com",
             build_authentication_request_url(
                 "https://accounts.google.com/o/oauth2/auth?unknown=testing",
