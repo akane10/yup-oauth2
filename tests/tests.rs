@@ -162,6 +162,7 @@ async fn create_installed_flow_auth(
     server: &Server,
     method: InstalledFlowReturnMethod,
     filename: Option<PathBuf>,
+    redirect_uris: Vec<&str>,
 ) -> DefaultAuthenticator {
     let app_secret: ApplicationSecret = parse_json!({
         "client_id": "902216714886-k2v9uei3p1dk6h686jbsn9mo96tnbvto.apps.googleusercontent.com",
@@ -170,7 +171,7 @@ async fn create_installed_flow_auth(
         "token_uri": server.url_str("/token"),
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_secret": "iuMPN6Ne1PD7cos29Tk9rlqH",
-        "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob","http://localhost"],
+        "redirect_uris": redirect_uris
     });
     struct FD(hyper::Client<<DefaultHyperClient as HyperClientBuilder>::Connector>);
     impl InstalledFlowDelegate for FD {
@@ -231,8 +232,13 @@ async fn create_installed_flow_auth(
 async fn test_installed_interactive_success() {
     let _ = env_logger::try_init();
     let server = Server::run();
-    let auth =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::Interactive, None).await;
+    let auth = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::Interactive,
+        None,
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+    )
+    .await;
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/token"),
@@ -260,8 +266,13 @@ async fn test_installed_interactive_success() {
 async fn test_installed_redirect_success() {
     let _ = env_logger::try_init();
     let server = Server::run();
-    let auth =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::HTTPRedirect, None).await;
+    let auth = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::HTTPRedirect,
+        None,
+        vec![],
+    )
+    .await;
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/token"),
@@ -289,8 +300,13 @@ async fn test_installed_redirect_success() {
 async fn test_installed_error() {
     let _ = env_logger::try_init();
     let server = Server::run();
-    let auth =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::Interactive, None).await;
+    let auth = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::Interactive,
+        None,
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+    )
+    .await;
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/token"),
@@ -352,7 +368,9 @@ async fn test_service_account_success() {
         .await
         .expect("token failed");
     assert!(tok.as_str().contains("ya29.c.ElouBywiys0Ly"));
-    assert!(OffsetDateTime::now_utc() + time::Duration::seconds(3600) >= tok.expiration_time().unwrap());
+    assert!(
+        OffsetDateTime::now_utc() + time::Duration::seconds(3600) >= tok.expiration_time().unwrap()
+    );
 }
 
 #[tokio::test]
@@ -378,8 +396,13 @@ async fn test_service_account_error() {
 async fn test_refresh() {
     let _ = env_logger::try_init();
     let server = Server::run();
-    let auth =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::Interactive, None).await;
+    let auth = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::Interactive,
+        None,
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+    )
+    .await;
     // We refresh a token whenever it's within 1 minute of expiring. So
     // acquiring a token that expires in 59 seconds will force a refresh on
     // the next token call.
@@ -476,9 +499,7 @@ async fn test_refresh() {
         }))),
     );
 
-    let tok_err = auth
-        .token(&["https://googleapis.com/some/scope"])
-        .await;
+    let tok_err = auth.token(&["https://googleapis.com/some/scope"]).await;
     assert!(tok_err.is_ok());
 }
 
@@ -486,8 +507,13 @@ async fn test_refresh() {
 async fn test_memory_storage() {
     let _ = env_logger::try_init();
     let server = Server::run();
-    let auth =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::Interactive, None).await;
+    let auth = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::Interactive,
+        None,
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+    )
+    .await;
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/token"),
@@ -519,8 +545,13 @@ async fn test_memory_storage() {
 
     // Create a new authenticator. This authenticator does not share a cache
     // with the previous one. Validate that it receives a different token.
-    let auth2 =
-        create_installed_flow_auth(&server, InstalledFlowReturnMethod::Interactive, None).await;
+    let auth2 = create_installed_flow_auth(
+        &server,
+        InstalledFlowReturnMethod::Interactive,
+        None,
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+    )
+    .await;
     server.expect(
         Expectation::matching(all_of![
             request::method_path("POST", "/token"),
@@ -569,6 +600,7 @@ async fn test_disk_storage() {
             &server,
             InstalledFlowReturnMethod::Interactive,
             Some(storage_path.clone()),
+            vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
         )
         .await;
 
@@ -593,6 +625,7 @@ async fn test_disk_storage() {
         &server,
         InstalledFlowReturnMethod::Interactive,
         Some(storage_path.clone()),
+        vec!["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
     )
     .await;
     // Call token twice. Ensure that identical tokens are returned.
