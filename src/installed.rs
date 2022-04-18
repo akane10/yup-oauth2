@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use hyper::header;
+use hyper::Uri;
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use tokio::sync::oneshot;
 use url::form_urlencoded;
@@ -159,7 +160,15 @@ impl InstalledFlow {
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
         use std::borrow::Cow;
-        let server = InstalledFlowServer::run()?;
+        // TODO: fix me
+        let port: u16 = if app_secret.redirect_uris.len() > 0 {
+            let redirect_uri = &app_secret.redirect_uris[0];
+            let uri: Uri = redirect_uri.parse().unwrap();
+            uri.port().unwrap().as_u16()
+        } else {
+            0
+        };
+        let server = InstalledFlowServer::run(port)?;
         let server_addr = server.local_addr();
 
         // Present url to user.
@@ -243,7 +252,7 @@ struct InstalledFlowServer {
 }
 
 impl InstalledFlowServer {
-    fn run() -> Result<Self, Error> {
+    fn run(port: u16) -> Result<Self, Error> {
         use hyper::service::{make_service_fn, service_fn};
         let (auth_code_tx, auth_code_rx) = oneshot::channel::<String>();
         let (trigger_shutdown_tx, trigger_shutdown_rx) = oneshot::channel::<()>();
@@ -258,7 +267,7 @@ impl InstalledFlowServer {
                 }))
             }
         });
-        let addr: std::net::SocketAddr = ([127, 0, 0, 1], 0).into();
+        let addr: std::net::SocketAddr = ([127, 0, 0, 1], port).into();
         let server = hyper::server::Server::try_bind(&addr)?;
         let server = server.http1_only(true).serve(service);
         let addr = server.local_addr();
@@ -402,8 +411,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_server_random_local_port() {
-        let addr1 = InstalledFlowServer::run().unwrap().local_addr();
-        let addr2 = InstalledFlowServer::run().unwrap().local_addr();
+        // TODO: fix me
+        let addr1 = InstalledFlowServer::run(2222).unwrap().local_addr();
+        let addr2 = InstalledFlowServer::run(3333).unwrap().local_addr();
         assert_ne!(addr1.port(), addr2.port());
     }
 
@@ -425,7 +435,8 @@ mod tests {
     async fn test_server() {
         let client: hyper::Client<hyper::client::HttpConnector, hyper::Body> =
             hyper::Client::builder().build_http();
-        let server = InstalledFlowServer::run().unwrap();
+        // TODO: fix me
+        let server = InstalledFlowServer::run(4444).unwrap();
 
         let response = client
             .get(format!("http://{}/", server.local_addr()).parse().unwrap())
